@@ -5,6 +5,8 @@ except ImportError:
     from urllib.parse import urlparse, parse_qs
 
 import psycopg2
+from datetime import datetime
+import socket
 
 class DbCon:
     def __init__(self):
@@ -17,33 +19,59 @@ class DbCon:
 
             self.cursor = self.connection.cursor()
             print("connected to - ",
-                  self.execSql("Select version();").result(),"\n")
+                  self.send("Select version();").result(),"\n")
 
         except (Exception, psycopg2.Error) as error :
             print ("error:", error)
-            self.__del__()
+            self.close()
 
-    def execSql(self, sql='Select version();'):
-            self.cursor.execute("Select version();")
+    def send(self, sql='Select version();'):
+            print('sql> ', sql)
+            self.cursor.execute(sql)
+            self.connection.commit()
             return self
+    def status(self):
+        return self.cursor.statusmessage
     def result(self):
         return self.cursor.fetchone()
-    def __del__(self):
+    def results(self):
+        return self.cursor.fetchall()
+    def close(self):
         if(self.connection):
             self.cursor.close()
             self.connection.close()
             print("connection closed")
 
+dbCon = DbCon()
 class WebLoggerHandler(BaseHTTPRequestHandler):
-    def __init__():
-        self.dbcon = DbCon()
     def do_GET(self):
+        print('> got:', self.path)
         qs = parse_qs(urlparse(self.path).query)
         msg = qs["msg"]
-        print('> got:', msg)
-        self.dbcon.execSql("insert into messages (msg, created_at) values ('%s', '%s');" % (msg[0], '2020-01-22'))
+        src = qs["src"]
+        now = datetime.now()
+        date_time = now.strftime("%Y-%m-%dT%H:%M:%S")
+        result = dbCon.send("""
+            insert into messages (src, msg, ts_cre)
+            values ('%s', '%s', '%s');
+            """ % (src[0], msg[0], date_time)).status()
+        print(result)
         self.send_response(204)
         self.end_headers()
 
 httpd = HTTPServer(('0.0.0.0', 18473), WebLoggerHandler)
 httpd.serve_forever()
+
+class UDPSocket:
+    def __init__(ip='127.0.0.1', port=53743):
+        sock = socket.socket(socket.AF_INET,
+                             socket.SOCK_DGRAM)
+        sock.bind((ip, port))
+        print('UDPSocket started on %s:%i' % (ip, port))
+
+    def recv(self):
+        while True:
+            data, addr = sock.recvfrom(1024)
+            print("received: ", data)
+
+UDPSpcker().recv()
