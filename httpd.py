@@ -6,6 +6,7 @@ except ImportError:
 
 from app import App
 from dbcon import DbCon
+import sys
 
 app = App(DbCon())
 
@@ -26,5 +27,10 @@ class WebLoggerHandler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
-httpd = HTTPServer(('0.0.0.0', 18473), WebLoggerHandler)
+if len(sys.argv) > 1:
+    port = sys.argv[1]
+else:
+    port = 80
+httpd = HTTPServer(('', int(port)), WebLoggerHandler)
+print("httpd starting on :", port)
 httpd.serve_forever()
