@@ -13,9 +13,16 @@ class WebLoggerHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         print('> got:', self.path)
         qs = parse_qs(urlparse(self.path).query)
-        msg = qs["msg"][0]
-        src = qs["src"][0]
-        app.send(src, msg)
+        if 'msg' in qs:
+            msg = qs["msg"][0]
+        else:
+            msg = None
+        if 'src' in qs:
+            src = qs["src"][0]
+        else:
+            src = None
+        if msg != None:
+            app.send(src, msg)
         self.send_response(204)
         self.end_headers()
 
